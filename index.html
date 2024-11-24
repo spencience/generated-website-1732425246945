@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Flying Bird Simulator - Spencience</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+<style>
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container"></div>
+<div class="controls">Use Arrow Keys to fly | Space to flap wings</div>
+<script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            backgroundColor: '#87CEEB',
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+        let bird;
+        let clouds;
+        let score = 0;
+        let scoreText;
+        let gameOver = false;
+        let cursors;
+        let wingSound;
+        let altitude;
+        let energy = 100;
+        let energyText;
+        let energyBar;
+
+        function preload() {
+            // Create bird sprite using shapes
+            this.load.atlas('bird', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', null);
+        }
+
+        function create() {
+            // Create bird using graphics
+            bird = this.add.graphics();
+            bird.lineStyle(2, 0x000000);
+            bird.fillStyle(0xFF6B6B);
+            bird.beginPath();
+            bird.moveTo(0, 0);
+            bird.lineTo(-15, 15);
+            bird.lineTo(15, 0);
+            bird.lineTo(-15, -15);
+            bird.closePath();
+            bird.fill();
+            bird.stroke();
+
+            // Convert to physics sprite
+            bird = this.physics.add.existing(bird, false);
+            bird.body.setCollideWorldBounds(true);
+            bird.x = 400;
+            bird.y = 300;
+
+            // Create clouds
+            clouds = this.add.group();
+            for(let i = 0; i < 5; i++) {
+                createCloud.call(this, Phaser.Math.Between(0, 800), Phaser.Math.Between(0, 600));
+            }
+
+            // Setup controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            // Add score and energy display
+            scoreText = this.add.text(16, 16, 'Altitude: 0m', { fontSize: '32px', fill: '#fff' });
+            energyText = this.add.text(16, 56, 'Energy: 100%', { fontSize: '32px', fill: '#fff' });
+
+            // Create energy bar
+            energyBar = this.add.graphics();
+            updateEnergyBar.call(this);
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            // Handle input
+            if (cursors.left.isDown) {
+                bird.body.setVelocityX(-200);
+                bird.angle = -15;
+            } else if (cursors.right.isDown) {
+                bird.body.setVelocityX(200);
+                bird.angle = 15;
+            } else {
+                bird.body.setVelocityX(0);
+                bird.angle = 0;
+            }
+
+            if (cursors.space.isDown && energy > 0) {
+                bird.body.setVelocityY(-200);
+                energy = Math.max(0, energy - 0.5);
+                updateEnergyBar.call(this);
+            }
+
+            // Update altitude score
+            altitude = Math.floor((600 - bird.y) / 10);
+            scoreText.setText('Altitude: ' + altitude + 'm');
+            energyText.setText('Energy: ' + Math.floor(energy) + '%');
+
+            // Regenerate energy when not flapping
+            if (!cursors.space.isDown) {
+                energy = Math.min(100, energy + 0.1);
+                updateEnergyBar.call(this);
+            }
+
+            // Move clouds
+            clouds.children.iterate(function(cloud) {
+                cloud.x -= 1;
+                if (cloud.x < -100) {
+                    cloud.x = 900;
+                    cloud.y = Phaser.Math.Between(0, 600);
+                }
+            });
+        }
+
+        function createCloud(x, y) {
+            const cloud = this.add.graphics();
+            cloud.fillStyle(0xFFFFFF, 0.8);
+            cloud.fillCircle(0, 0, 20);
+            cloud.fillCircle(15, 0, 25);
+            cloud.fillCircle(30, 0, 20);
+            cloud.x = x;
+            cloud.y = y;
+            clouds.add(cloud);
+        }
+
+        function updateEnergyBar() {
+            energyBar.clear();
+            energyBar.fillStyle(0x00FF00, 1);
+            energyBar.fillRect(16, 100, energy * 2, 20);
+            energyBar.lineStyle(2, 0xFFFFFF);
+            energyBar.strokeRect(16, 100, 200, 20);
+        }
+    </script>
+</body>
+</html>
